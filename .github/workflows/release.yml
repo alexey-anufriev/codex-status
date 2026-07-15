@@ -44,6 +44,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           current_version=$(jq -er '.KPlugin.Version' package/metadata.json)
           current_tag="v$current_version"
           push_mode=none
@@ -69,8 +72,6 @@ jobs:
                 '.KPlugin.Version = $version' package/metadata.json >metadata.json.tmp
               mv metadata.json.tmp package/metadata.json
 
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
               git add package/metadata.json
               git commit -m "chore: release $release_tag"
               git tag -a "$release_tag" -m "Codex Status $release_version"
