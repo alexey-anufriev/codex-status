@@ -70,6 +70,20 @@ make install
 
 The helper is bundled inside the plasmoid, so the installed widget does not depend on the source directory.
 
+### Update a source installation
+
+Pull the latest source and run the same install target again:
+
+```bash
+cd codex-status
+git pull --ff-only
+make install
+systemctl --user restart plasma-plasmashell.service
+```
+
+`make install` detects the existing widget and upgrades it in place. You do not
+need to remove or re-add the widget, and its existing configuration is preserved.
+
 ## Install a release
 
 Download the `.plasmoid` file from the

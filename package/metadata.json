@@ -7,7 +7,7 @@
         ],
         "Category": "System Information",
         "Description": "Shows the current Codex weekly usage limit.",
-        "Icon": "applications-development",
+        "Icon": "utilities-system-monitor",
         "Id": "com.alexey-anufriev.codexstatus",
         "Name": "Codex Status",
         "Version": "1.2.0",
