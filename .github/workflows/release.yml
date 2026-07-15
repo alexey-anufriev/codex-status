@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Install validation and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends jq libxml2-utils shellcheck unzip zip
+
+      - name: Validate sources
+        run: |
+          bash -n scripts/manage-package.sh package/contents/tools/*.sh package/contents/tools/lib/*.sh
+          shellcheck -x -P SCRIPTDIR scripts/manage-package.sh package/contents/tools/*.sh package/contents/tools/lib/*.sh
+          jq -e '
+            .KPlugin.Id == "com.alexey-anufriev.codexstatus" and
+            (.KPlugin.Version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+          ' package/metadata.json >/dev/null
+          xmllint --noout package/contents/config/main.xml
+          jq -n -f package/contents/tools/normalize-rate-limits.jq >/dev/null
+          awk 'length > 120 { print FNR ":" length; failed = 1 } END { exit failed }' README.md
+          git diff --check
+
+      - name: Prepare release version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_version=$(jq -er '.KPlugin.Version' package/metadata.json)
+          current_tag="v$current_version"
+          push_mode=none
+
+          if git rev-parse --verify --quiet "refs/tags/$current_tag" >/dev/null; then
+            tagged_commit=$(git rev-list -n 1 "$current_tag")
+            if [[ "$tagged_commit" != "$(git rev-parse HEAD)" ]]; then
+              echo "Tag $current_tag does not point to the default branch HEAD." >&2
+              exit 1
+            fi
+
+            if gh release view "$current_tag" >/dev/null 2>&1; then
+              IFS=. read -r major minor _ <<<"$current_version"
+              release_version="$major.$((10#$minor + 1)).0"
+              release_tag="v$release_version"
+
+              if git rev-parse --verify --quiet "refs/tags/$release_tag" >/dev/null; then
+                echo "Tag $release_tag already exists." >&2
+                exit 1
+              fi
+
+              jq --arg version "$release_version" \
+                '.KPlugin.Version = $version' package/metadata.json >metadata.json.tmp
+              mv metadata.json.tmp package/metadata.json
+
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add package/metadata.json
+              git commit -m "chore: release $release_tag"
+              git tag -a "$release_tag" -m "Codex Status $release_version"
+              push_mode=commit
+            else
+              release_version="$current_version"
+              release_tag="$current_tag"
+            fi
+          else
+            release_version="$current_version"
+            release_tag="$current_tag"
+            git tag -a "$release_tag" -m "Codex Status $release_version"
+            push_mode=tag
+          fi
+
+          echo "release_version=$release_version" >>"$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >>"$GITHUB_OUTPUT"
+          echo "push_mode=$push_mode" >>"$GITHUB_OUTPUT"
+
+      - name: Build and inspect package
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+        run: |
+          make clean
+          make package
+          archive="build/com.alexey-anufriev.codexstatus.plasmoid"
+          test -f "$archive"
+          test "$(unzip -p "$archive" metadata.json | jq -r '.KPlugin.Version')" = "$RELEASE_VERSION"
+
+      - name: Push release commit and tag
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          PUSH_MODE: ${{ steps.version.outputs.push_mode }}
+        run: |
+          case "$PUSH_MODE" in
+            commit)
+              git push --atomic origin "HEAD:$DEFAULT_BRANCH" "refs/tags/$RELEASE_TAG"
+              ;;
+            tag)
+              git push origin "refs/tags/$RELEASE_TAG"
+              ;;
+            none)
+              ;;
+            *)
+              echo "Unknown push mode: $PUSH_MODE" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            build/com.alexey-anufriev.codexstatus.plasmoid \
+            --verify-tag \
+            --generate-notes \
+            --title "Codex Status $RELEASE_VERSION"

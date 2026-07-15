@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Alexey Anufriev"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Shows the current Codex weekly usage limit.",
+        "Icon": "applications-development",
+        "Id": "com.alexey-anufriev.codexstatus",
+        "Name": "Codex Status",
+        "Version": "1.2.0",
+        "License": "MIT",
+        "Website": "https://github.com/alexey-anufriev/codex-status",
+        "BugReportUrl": "https://github.com/alexey-anufriev/codex-status/issues"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

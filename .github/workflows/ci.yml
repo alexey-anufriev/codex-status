@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install validation tools
+        run: sudo apt-get update && sudo apt-get install --yes jq libxml2-utils shellcheck unzip zip
+
+      - name: Check shell syntax
+        run: bash -n scripts/*.sh package/contents/tools/*.sh package/contents/tools/lib/*.sh
+
+      - name: Run ShellCheck
+        run: shellcheck -x -P SCRIPTDIR scripts/*.sh package/contents/tools/*.sh package/contents/tools/lib/*.sh
+
+      - name: Validate package metadata
+        run: |
+          jq -e '
+            .KPlugin.Id == "com.alexey-anufriev.codexstatus" and
+            (.KPlugin.Version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and
+            .KPlugin.Website == "https://github.com/alexey-anufriev/codex-status" and
+            .KPlugin.BugReportUrl == "https://github.com/alexey-anufriev/codex-status/issues"
+          ' package/metadata.json
+
+      - name: Validate XML and jq sources
+        run: |
+          xmllint --noout package/contents/config/main.xml
+          jq -n -f package/contents/tools/normalize-rate-limits.jq >/dev/null
+
+      - name: Check formatting
+        run: |
+          git diff --check
+          awk 'length > 120 { print FNR ":" length ":" $0; failed = 1 } END { exit failed }' README.md
+
+      - name: Build and inspect package
+        run: |
+          make package
+          archive=build/com.alexey-anufriev.codexstatus.plasmoid
+          package_version=$(jq -r '.KPlugin.Version' package/metadata.json)
+          unzip -t "$archive"
+          unzip -p "$archive" metadata.json | jq -e --arg version "$package_version" '.KPlugin.Version == $version'
+
+      - name: Upload packaged plasmoid
+        uses: actions/upload-artifact@v6
+        with:
+          name: com.alexey-anufriev.codexstatus-${{ github.sha }}
+          path: build/com.alexey-anufriev.codexstatus.plasmoid
+          if-no-files-found: error
