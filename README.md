@@ -17,6 +17,8 @@ A compact KDE Plasma panel widget that shows the remaining Codex limits, togethe
 - Adaptive panel width
 - Automatic refresh every 30 seconds by default
 - Manual refresh by clicking the widget
+- Available reset credits and their expiration times in a separated hover-tooltip section
+- Orange expiration warning at two days or less and red warning below one day
 - Last update time in the hover tooltip
 - Daily pace colors anchored to the weekly reset time
 - No long-running background service
@@ -163,7 +165,7 @@ From the repository:
 ./package/contents/tools/codex-status.sh "$(command -v codex)" | jq
 ```
 
-Expected response shape with the current weekly-only limit:
+Expected response shape with a weekly limit and available reset credit:
 
 ```json
 {
@@ -171,6 +173,16 @@ Expected response shape with the current weekly-only limit:
   "weeklyWindow": {
     "remainingPercent": 54,
     "resetsAt": 1784300000
+  },
+  "rateLimitResetCredits": {
+    "availableCount": 1,
+    "credits": [
+      {
+        "title": "Codex rate-limit reset",
+        "description": null,
+        "expiresAt": 1784386400
+      }
+    ]
   },
   "fetchedAt": 1783978751
 }
@@ -263,7 +275,7 @@ The helper never uses `pkill` or `killall`; it only terminates the process ID it
 - The helper does not read Codex credential files.
 - Plasma stores only the absolute Codex executable path for each widget instance.
 - No token is exposed to QML or stored by the widget.
-- Only the remaining percentage, reset timestamp, fetch timestamp, and error text are returned.
+- Only limit percentages and timestamps, reset-credit display details, fetch timestamp, and error text are returned.
 - Each refresh starts an isolated stdio app-server process and closes it after the response or timeout.
 - Existing Codex CLI sessions and separately running app-server processes are not targeted.
 

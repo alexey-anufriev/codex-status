@@ -6,7 +6,7 @@
             }
         ],
         "Category": "System Information",
-        "Description": "Shows the current Codex weekly usage limit.",
+        "Description": "Shows Codex usage limits and available reset credits.",
         "Icon": "utilities-system-monitor",
         "Id": "com.alexey-anufriev.codexstatus",
         "Name": "Codex Status",
