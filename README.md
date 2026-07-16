@@ -232,6 +232,18 @@ Output:
 build/com.alexey-anufriev.codexstatus.plasmoid
 ```
 
+## Release
+
+1. Set an unused semantic version in `package/metadata.json`.
+2. Commit and push the version bump to the default branch.
+3. Wait for the **CI** workflow to pass.
+4. In GitHub Actions, run the **Release** workflow manually.
+
+The Release workflow validates and packages the widget, creates the matching
+`v<version>` tag, and publishes a GitHub release with the `.plasmoid` file and
+generated release notes. Do not create the tag manually. The CI workflow only
+validates the project and uploads a temporary build artifact.
+
 ## Uninstall
 
 ```bash

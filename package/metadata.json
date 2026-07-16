@@ -10,7 +10,7 @@
         "Icon": "utilities-system-monitor",
         "Id": "com.alexey-anufriev.codexstatus",
         "Name": "Codex Status",
-        "Version": "1.2.0",
+        "Version": "1.3.0",
         "License": "MIT",
         "Website": "https://github.com/alexey-anufriev/codex-status",
         "BugReportUrl": "https://github.com/alexey-anufriev/codex-status/issues"
